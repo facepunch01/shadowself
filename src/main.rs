@@ -1,9 +1,8 @@
-use std::fs::File;
 use std::fs;
+use std::fs::File;
+use std::io::{Write, BufRead, BufReader};
 use std::path::Path;
-use std::io::Write;
 use std::process;
-use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
@@ -14,7 +13,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 async fn fetch_url(url: String, file_name: String) -> Result<()> {
     let response = reqwest::get(url).await?;
     let mut file = std::fs::File::create(file_name)?;
-    let mut content =  Cursor::new(response.bytes().await?);
+    let mut content = Cursor::new(response.bytes().await?);
     std::io::copy(&mut content, &mut file)?;
     Ok(())
 }
@@ -37,9 +36,7 @@ fn start_listener(sender: Sender<String>, location: String) {
             .spawn()
             .expect("failed to execute process")
     };
-
     println!("Started process: {}", child.id());
-
     thread::spawn(move || {
         let mut f = BufReader::new(child.stdout.unwrap());
         loop {
@@ -55,7 +52,6 @@ fn start_listener(sender: Sender<String>, location: String) {
 }
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-
     const DATA: &[u8; 198] = b"{
     \"server\": \"gyattcentral.com\",
     \"server_port\": 8000,
@@ -70,10 +66,14 @@ async fn main() -> std::io::Result<()> {
     let mut location = dirs::data_dir().expect("REASON");
     location.push("gyatt-dir");
     let cloned = location.clone();
-    if Path::new(&location).exists() == false {fs::create_dir(&location)?}
+    if Path::new(&location).exists() == false {
+        fs::create_dir(&location)?
+    }
     let mut config = location.clone();
     config.push(&FILENAME);
-    if Path::new(&config).exists() == true {fs::remove_file(&config)?}
+    if Path::new(&config).exists() == true {
+        fs::remove_file(&config)?
+    }
 
     let mut buffer = File::create(&config)?;
 
@@ -82,8 +82,16 @@ async fn main() -> std::io::Result<()> {
         pos += bytes_written;
     }
     location.push("sslocal.exe");
-    if Path::new(&location).exists() == false {let _ = fetch_url("https://github.com/thatboyjake/personal/raw/main/sslocal.exe".to_string(), (&location.display()).to_string()).await;}
-    if Path::new(&location).exists() == false {process::exit(1);}
+    if Path::new(&location).exists() == false {
+        let _ = fetch_url(
+            "https://github.com/thatboyjake/personal/raw/main/sslocal.exe".to_string(),
+            (&location.display()).to_string(),
+        )
+        .await;
+    }
+    if Path::new(&location).exists() == false {
+        process::exit(1);
+    }
     let (tx, rx) = channel();
     start_listener(tx, (cloned.display()).to_string());
     for line in rx {
